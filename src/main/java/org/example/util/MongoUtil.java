@@ -1,4 +1,4 @@
-package org.example.util;
+package util;
 
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
@@ -10,32 +10,27 @@ import org.bson.codecs.pojo.PojoCodecProvider;
 
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
+import static com.mongodb.MongoClientSettings.getDefaultCodecRegistry;
 
 public class MongoUtil {
 
     private static MongoClient client;
     private static MongoDatabase db;
 
-    private MongoUtil() {}
-
     public static MongoDatabase getDatabase() {
         if (db == null) {
-
+            // 1. Configurar el codec para POJOs (Mapeo automático)
             CodecRegistry pojoCodecRegistry = fromRegistries(
-                    MongoClientSettings.getDefaultCodecRegistry(),
+                    getDefaultCodecRegistry(),
                     fromProviders(PojoCodecProvider.builder().automatic(true).build())
             );
 
-            ConnectionString cs = new ConnectionString("mongodb://localhost:27017/");
+            // 2. Crear el cliente (Singleton)
+            // Asegúrate de que tu MongoDB corre en el puerto 27017
+            client = MongoClients.create("mongodb://localhost:27017");
 
-            MongoClientSettings settings = MongoClientSettings.builder()
-                    .applyConnectionString(cs)
-                    .codecRegistry(pojoCodecRegistry) // <--- ¡ESTA LÍNEA FALTABA!
-                    .build();
-
-            client = MongoClients.create(settings);
-
-            db = client.getDatabase("blog");
+            // 3. Obtener la base de datos aplicando el registro de codecs
+            db = client.getDatabase("blog_db").withCodecRegistry(pojoCodecRegistry);
         }
         return db;
     }
@@ -43,8 +38,8 @@ public class MongoUtil {
     public static void close() {
         if (client != null) {
             client.close();
-            client = null;
-            db = null;
+            db = null; // Reseteamos para permitir reconexión si fuera necesario
+            System.out.println("Conexión con MongoDB cerrada.");
         }
     }
 }
